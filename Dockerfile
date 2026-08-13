@@ -78,6 +78,7 @@ RUN npm ci --omit=dev
 COPY server.js ./
 COPY camofox.config.json ./
 COPY lib/ ./lib/
+COPY mcp/ ./mcp/
 COPY plugins/ ./plugins/
 COPY scripts/ ./scripts/
 

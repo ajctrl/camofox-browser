@@ -28,7 +28,7 @@ describe('prepareExternalCamoufoxExecutable', () => {
     writeFileSync(executable, '#!/bin/sh\nexit 0\n');
     chmodSync(executable, 0o755);
     writeFileSync(join(bundleDir, 'properties.json'), '[]\n');
-    writeFileSync(join(bundleDir, 'version.json'), '{"version":"135.0.1","release":"beta.24"}\n');
+    writeFileSync(join(bundleDir, 'version.json'), '{"version":"150.0.2","release":"alpha.26"}\n');
     mkdirSync(join(bundleDir, 'fontconfig', 'lin'), { recursive: true });
 
     const prepared = prepareExternalCamoufoxExecutable(executable, { cacheDir });

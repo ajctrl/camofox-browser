@@ -19,10 +19,22 @@
     Target architecture: x86_64 or aarch64 (default: x86_64).
 
 .PARAMETER CamoufoxVersion
-    Camoufox version (default: 135.0.1).
+    Camoufox version (default: 150.0.2).
 
 .PARAMETER CamoufoxRelease
-    Camoufox release channel (default: beta.24).
+    Camoufox GitHub tag release (default: beta.25).
+
+.PARAMETER CamoufoxX64AssetRelease
+    Camoufox x86_64 Linux asset release (default: alpha.26).
+
+.PARAMETER CamoufoxX64Sha256
+    SHA-256 digest for the x86_64 Linux asset.
+
+.PARAMETER CamoufoxArm64AssetRelease
+    Camoufox arm64 Linux asset release (default: alpha.25).
+
+.PARAMETER CamoufoxArm64Sha256
+    SHA-256 digest for the arm64 Linux asset.
 
 .PARAMETER ContainerName
     Docker container name (default: camofox-browser).
@@ -43,8 +55,12 @@ param(
     [ValidateSet('x86_64', 'aarch64')]
     [string]$Arch = 'x86_64',
 
-    [string]$CamoufoxVersion = '135.0.1',
-    [string]$CamoufoxRelease = 'beta.24',
+    [string]$CamoufoxVersion = '150.0.2',
+    [string]$CamoufoxRelease = 'beta.25',
+    [string]$CamoufoxX64AssetRelease = 'alpha.26',
+    [string]$CamoufoxX64Sha256 = 'b146b98b0c2c41023716feef36451f319a534309f72c54584a4b0b88670f510b',
+    [string]$CamoufoxArm64AssetRelease = 'alpha.25',
+    [string]$CamoufoxArm64Sha256 = 'b2870af8cd99721d41bd48f0cce0f949449ab75364b80ee3d389bd35953ea213',
     [string]$ContainerName = 'camofox-browser',
     [int]$HostPort = 9377
 )
@@ -52,7 +68,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSCommandPath
 $DistDir = Join-Path $ProjectRoot 'dist'
-$CamoufoxZip = Join-Path $DistDir "camoufox-$Arch.zip"
 $YtDlpBin = Join-Path $DistDir "yt-dlp-$Arch"
 $ImageTag = "camofox-browser:$CamoufoxVersion-$Arch"
 $ContainerPort = 9377
@@ -60,13 +75,18 @@ $ContainerPort = 9377
 # Map architecture to upstream release filenames
 if ($Arch -eq 'aarch64') {
     $CamoufoxArch = 'arm64'
+    $CamoufoxAssetRelease = $CamoufoxArm64AssetRelease
+    $CamoufoxSha256 = $CamoufoxArm64Sha256
     $YtDlpSuffix = '_aarch64'
 } else {
     $CamoufoxArch = 'x86_64'
+    $CamoufoxAssetRelease = $CamoufoxX64AssetRelease
+    $CamoufoxSha256 = $CamoufoxX64Sha256
     $YtDlpSuffix = ''
 }
 
-$CamoufoxUrl = "https://github.com/daijro/camoufox/releases/download/v$CamoufoxVersion-$CamoufoxRelease/camoufox-$CamoufoxVersion-$CamoufoxRelease-lin.$CamoufoxArch.zip"
+$CamoufoxZip = Join-Path $DistDir "camoufox-$CamoufoxVersion-$CamoufoxAssetRelease-$Arch.zip"
+$CamoufoxUrl = "https://github.com/daijro/camoufox/releases/download/v$CamoufoxVersion-$CamoufoxRelease/camoufox-$CamoufoxVersion-$CamoufoxAssetRelease-lin.$CamoufoxArch.zip"
 $YtDlpUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux$YtDlpSuffix"
 
 function Write-Step {
@@ -81,11 +101,17 @@ function Invoke-Fetch {
     if (-not (Test-Path $CamoufoxZip)) {
         Write-Step "Downloading Camoufox browser ($CamoufoxArch)..."
         Write-Host "  URL: $CamoufoxUrl"
-        curl.exe -L -o $CamoufoxZip $CamoufoxUrl
+        curl.exe -fL -o $CamoufoxZip $CamoufoxUrl
         Write-Host "  Downloaded: $(Get-Item $CamoufoxZip | Select-Object -ExpandProperty Length) bytes"
     } else {
         Write-Host "  [SKIP] Camoufox already downloaded"
     }
+
+    $ActualCamoufoxSha256 = (Get-FileHash -Algorithm SHA256 $CamoufoxZip).Hash.ToLowerInvariant()
+    if ($ActualCamoufoxSha256 -ne $CamoufoxSha256.ToLowerInvariant()) {
+        throw "Camoufox SHA-256 mismatch: expected $CamoufoxSha256, got $ActualCamoufoxSha256"
+    }
+    Write-Host "  SHA-256 verified"
 
     if (-not (Test-Path $YtDlpBin)) {
         Write-Step "Downloading yt-dlp ($Arch)..."
@@ -102,9 +128,13 @@ function Invoke-Build {
 
     Write-Step "Building Docker image: $ImageTag"
     docker build `
-        --build-arg "ARCH=$Arch" `
+        --build-arg "ARCH=$CamoufoxArch" `
         --build-arg "CAMOUFOX_VERSION=$CamoufoxVersion" `
         --build-arg "CAMOUFOX_RELEASE=$CamoufoxRelease" `
+        --build-arg "CAMOUFOX_X86_64_ASSET_RELEASE=$CamoufoxX64AssetRelease" `
+        --build-arg "CAMOUFOX_X86_64_SHA256=$CamoufoxX64Sha256" `
+        --build-arg "CAMOUFOX_ARM64_ASSET_RELEASE=$CamoufoxArm64AssetRelease" `
+        --build-arg "CAMOUFOX_ARM64_SHA256=$CamoufoxArm64Sha256" `
         -t $ImageTag `
         -f (Join-Path $ProjectRoot 'Dockerfile') `
         $ProjectRoot

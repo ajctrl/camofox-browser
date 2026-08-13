@@ -3,8 +3,13 @@
 
 FROM node:22-slim AS runtime-base
 
-ARG CAMOUFOX_VERSION=135.0.1
-ARG CAMOUFOX_RELEASE=beta.24
+ARG CAMOUFOX_VERSION=150.0.2
+# GitHub tag release. The Linux asset releases differ by architecture for v150.
+ARG CAMOUFOX_RELEASE=beta.25
+ARG CAMOUFOX_AMD64_ASSET_RELEASE=alpha.26
+ARG CAMOUFOX_AMD64_SHA256=b146b98b0c2c41023716feef36451f319a534309f72c54584a4b0b88670f510b
+ARG CAMOUFOX_ARM64_ASSET_RELEASE=alpha.25
+ARG CAMOUFOX_ARM64_SHA256=b2870af8cd99721d41bd48f0cce0f949449ab75364b80ee3d389bd35953ea213
 ARG TARGETARCH
 
 # Install dependencies for Camoufox (Firefox-based)
@@ -45,16 +50,17 @@ RUN apt-get update && apt-get install -y \
 # Download and install Camoufox
 RUN set -eux; \
     case "${TARGETARCH}" in \
-      amd64) CAMOUFOX_ARCH="x86_64"; YTDLP_SUFFIX="" ;; \
-      arm64) CAMOUFOX_ARCH="arm64";   YTDLP_SUFFIX="_aarch64" ;; \
+      amd64) CAMOUFOX_ARCH="x86_64"; CAMOUFOX_ASSET_RELEASE="${CAMOUFOX_AMD64_ASSET_RELEASE}"; CAMOUFOX_SHA256="${CAMOUFOX_AMD64_SHA256}"; YTDLP_SUFFIX="" ;; \
+      arm64) CAMOUFOX_ARCH="arm64";   CAMOUFOX_ASSET_RELEASE="${CAMOUFOX_ARM64_ASSET_RELEASE}"; CAMOUFOX_SHA256="${CAMOUFOX_ARM64_SHA256}"; YTDLP_SUFFIX="_aarch64" ;; \
       *) echo "Unsupported arch: ${TARGETARCH}" && exit 1 ;; \
     esac; \
     mkdir -p /root/.cache/camoufox; \
-    curl -fSL "https://github.com/daijro/camoufox/releases/download/v${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}/camoufox-${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}-lin.${CAMOUFOX_ARCH}.zip" \
+    curl -fSL "https://github.com/daijro/camoufox/releases/download/v${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}/camoufox-${CAMOUFOX_VERSION}-${CAMOUFOX_ASSET_RELEASE}-lin.${CAMOUFOX_ARCH}.zip" \
       -o /tmp/camoufox.zip; \
+    echo "${CAMOUFOX_SHA256}  /tmp/camoufox.zip" | sha256sum -c -; \
     (unzip -q /tmp/camoufox.zip -d /root/.cache/camoufox || true); \
     chmod -R 755 /root/.cache/camoufox; \
-    echo "{\"version\":\"${CAMOUFOX_VERSION}\",\"release\":\"${CAMOUFOX_RELEASE}\"}" > /root/.cache/camoufox/version.json; \
+    echo "{\"version\":\"${CAMOUFOX_VERSION}\",\"release\":\"${CAMOUFOX_ASSET_RELEASE}\"}" > /root/.cache/camoufox/version.json; \
     test -f /root/.cache/camoufox/camoufox-bin && echo "Camoufox installed successfully"; \
     rm /tmp/camoufox.zip; \
     curl -fSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux${YTDLP_SUFFIX}" \

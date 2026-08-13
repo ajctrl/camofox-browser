@@ -139,8 +139,10 @@ make fetch
 
 # Override arch or version explicitly
 make up ARCH=x86_64
-make up VERSION=135.0.1 RELEASE=beta.24
+make up VERSION=150.0.2 RELEASE=beta.25
 ```
+
+Camoufox 150.0.2 uses architecture-specific Linux asset releases (`alpha.26` for x86_64 and `alpha.25` for arm64) under the `beta.25` GitHub tag. The Makefile pins both asset names and their SHA-256 digests; update the corresponding `*_ASSET_RELEASE` and `*_SHA256` values whenever overriding `VERSION` for another release.
 
 #### Windows
 

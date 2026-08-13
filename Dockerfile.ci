@@ -1,7 +1,7 @@
 # CI/CD Dockerfile — downloads binaries during build (no bind mounts needed).
 # For local builds with pre-downloaded binaries, use the default Dockerfile + Makefile.
 
-FROM node:22-slim
+FROM node:22-slim AS runtime-base
 
 ARG CAMOUFOX_VERSION=135.0.1
 ARG CAMOUFOX_RELEASE=beta.24
@@ -63,10 +63,23 @@ RUN set -eux; \
 
 WORKDIR /app
 
+FROM runtime-base AS dependencies
+
+# camoufox-js depends on better-sqlite3. When no prebuilt binary is available
+# for the current Node/architecture pair, node-gyp needs a native toolchain.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 COPY scripts/ ./scripts/
-RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --production
+RUN CAMOFOX_SKIP_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    npm ci --omit=dev
 
+FROM runtime-base
+
+COPY --from=dependencies /app/node_modules ./node_modules/
+COPY package.json package-lock.json ./
 COPY server.js ./
 COPY camofox.config.json ./
 COPY lib/ ./lib/

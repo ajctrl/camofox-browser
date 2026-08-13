@@ -106,6 +106,22 @@ Default port is `9377`. See [Environment Variables](#environment-variables) for 
 
 ### Docker
 
+#### Use the prebuilt image from GHCR
+
+Every version tag is published to GitHub Container Registry. Pull and run the latest image:
+
+```bash
+docker pull ghcr.io/jo-inc/camofox-browser:latest
+docker run -d --restart unless-stopped \
+  --name camofox-browser \
+  --shm-size=2g \
+  -p 9377:9377 \
+  ghcr.io/jo-inc/camofox-browser:latest
+```
+
+For a reproducible deployment, replace `latest` with a version tag such as `1.13.1`.
+The image is multi-architecture and supports `linux/amd64` and `linux/arm64`.
+
 The included `Makefile` auto-detects your CPU architecture and pre-downloads Camoufox + yt-dlp binaries outside the Docker build, so rebuilds are fast (~30s vs ~3min).
 
 ```bash
@@ -323,7 +339,7 @@ curl -X POST http://localhost:9377/sessions/agent1/cookies \
 docker run -p 9377:9377 \
   -e CAMOFOX_API_KEY="your-generated-key" \
   -v ~/.camofox/cookies:/home/node/.camofox/cookies:ro \
-  camofox-browser
+  ghcr.io/jo-inc/camofox-browser:latest
 ```
 
 For Fly.io:
